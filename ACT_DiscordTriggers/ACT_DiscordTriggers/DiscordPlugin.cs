@@ -16,6 +16,7 @@ using Discord.Net.Providers.UDPClient;
 using System.Reflection;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace ACT_Plugin {
 	public class DiscordPlugin : UserControl, IActPluginV1 {
@@ -355,21 +356,26 @@ namespace ACT_Plugin {
 		#endregion
 
 		#region Discord Methods
-		private void speak(string text) {
+		private DateTime whenSpeakRan = new DateTime();
+		private void speak( string text ) {
+			var delay = ( 1 ) * text.Split().Length;
+			while ( DateTime.Now - whenSpeakRan < TimeSpan.FromSeconds( delay ) ) { Thread.Sleep( 125 ); }
+
 			SpeechSynthesizer tts = new SpeechSynthesizer();
-			tts.SelectVoice((string) cmbTTS.SelectedItem);
+			tts.SelectVoice( ( string ) cmbTTS.SelectedItem );
 			tts.Volume = sliderTTSVol.Value * 5;
 			tts.Rate = sliderTTSSpeed.Value - 10;
 			MemoryStream ms = new MemoryStream();
-			tts.SetOutputToAudioStream(ms, formatInfo);
-			if (voiceStream == null)
-				voiceStream = audioClient.CreatePCMStream(AudioApplication.Voice, 128 * 1024);
-			tts.SpeakAsync(text);
-			tts.SpeakCompleted += (a, b) => {
-				ms.Seek(0, SeekOrigin.Begin);
-				ms.CopyTo(voiceStream);
+			tts.SetOutputToAudioStream( ms , formatInfo );
+			if ( voiceStream == null )
+				voiceStream = audioClient.CreatePCMStream( AudioApplication.Voice , 128 * 1024 );
+			tts.SpeakAsync( text );
+			tts.SpeakCompleted += ( a , b ) => {
+				ms.Seek( 0 , SeekOrigin.Begin );
+				ms.CopyTo( voiceStream );
 				voiceStream.Flush();
 			};
+			whenSpeakRan = DateTime.Now;
 		}
 
 		private void speakFile(string path, int volume) {
